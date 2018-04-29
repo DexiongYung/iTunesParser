@@ -8,16 +8,17 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 
+import com.example.dylanyung.ideatree.HttpLoaders.DataRetrievalHelpers;
+import com.example.dylanyung.ideatree.HttpLoaders.ImageLoaderTask;
 import com.example.dylanyung.ideatree.Parsers.SongJSONParser;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
@@ -28,10 +29,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         progressBar = findViewById(R.id.progressBar);
         trackListView = findViewById(R.id.listview_tracks);
-
         DownloadJSON downloadJSON = new DownloadJSON();
         downloadJSON.execute();
 
@@ -40,7 +39,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
+        String trackName = ((TextView) view.findViewById(R.id.track_name)).getText().toString();
+        String collectionName = ((TextView) view.findViewById(R.id.track_name)).getText().toString();
     }
 
     private class DownloadJSON extends AsyncTask<Void, Integer, String> {
@@ -66,7 +66,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private class ListViewLoaderTask extends AsyncTask<String, Void, SimpleAdapter> {
         JSONObject jsonObject;
-        HashSet<URL> cachedUrls = new HashSet<>();
 
         @Override
         protected SimpleAdapter doInBackground(String... stringJson) {
@@ -79,11 +78,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 e.printStackTrace();
             }
 
-            for (HashMap resultsHashMap : data) {
-                DataRetrievalHelpers dataRetrievalHelpers = new DataRetrievalHelpers();
-                dataRetrievalHelpers.convertUrlToFilePath(resultsHashMap, getBaseContext(), cachedUrls);
-            }
-
+            //Setting artwork URL prints some errors, but I wanted an async loading of images after the list was generated
             String[] from = {"collectionName", "trackName", "artworkUrl"};
             int[] to = {R.id.collection_name, R.id.track_name, R.id.artwork};
             SimpleAdapter adapter = new SimpleAdapter(getBaseContext(), data, R.layout.listview_layout, from, to);
@@ -95,6 +90,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         protected void onPostExecute(SimpleAdapter adapter) {
             progressBar.setVisibility(View.GONE);
             trackListView.setAdapter(adapter);
+
+            for (int i = 0; i < adapter.getCount(); i++) {
+                HashMap<String, Object> hashMap = (HashMap<String, Object>) adapter.getItem(i);
+                ImageLoaderTask imageLoaderTask = new ImageLoaderTask(getBaseContext(), trackListView);
+                hashMap.put("position", i);
+                imageLoaderTask.execute(hashMap);
+            }
         }
     }
 }
