@@ -1,12 +1,10 @@
 package com.example.dylanyung.ideatree;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.SimpleAdapter;
@@ -16,19 +14,13 @@ import com.example.dylanyung.ideatree.Parsers.SongJSONParser;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     ListView trackListView;
     ProgressBar progressBar;
 
@@ -42,35 +34,25 @@ public class MainActivity extends AppCompatActivity {
 
         DownloadJSON downloadJSON = new DownloadJSON();
         downloadJSON.execute();
+
+        trackListView.setOnItemClickListener(this);
     }
 
-    private String downloadURL() throws IOException {
-        progressBar.setVisibility(View.VISIBLE);
-        URL url = new URL("https://itunes.apple.com/search?term=Michael+jackson");
-        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-        urlConnection.connect();
-        InputStream inputStream = urlConnection.getInputStream();
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuffer jsonStringBuffer = new StringBuffer();
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-        String line = "";
-        while ((line = bufferedReader.readLine()) != null) {
-            jsonStringBuffer.append(line);
-        }
-        bufferedReader.close();
-        inputStream.close();
-
-        return jsonStringBuffer.toString();
     }
 
     private class DownloadJSON extends AsyncTask<Void, Integer, String> {
         @Override
         protected String doInBackground(Void... v) {
+            progressBar.setVisibility(View.VISIBLE);
             String data = "";
             try {
-                data = downloadURL();
+                DataRetrievalHelpers downloadUrl = new DataRetrievalHelpers();
+                data = downloadUrl.downloadURL();
             } catch (IOException e) {
-                Log.d("Error downloading url", e.toString());
+                e.printStackTrace();
             }
             return data;
         }
@@ -98,7 +80,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             for (HashMap resultsHashMap : data) {
-                convertUrlToFilePath(resultsHashMap);
+                DataRetrievalHelpers dataRetrievalHelpers = new DataRetrievalHelpers();
+                dataRetrievalHelpers.convertUrlToFilePath(resultsHashMap, getBaseContext(), cachedUrls);
             }
 
             String[] from = {"collectionName", "trackName", "artworkUrl"};
@@ -112,33 +95,6 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(SimpleAdapter adapter) {
             progressBar.setVisibility(View.GONE);
             trackListView.setAdapter(adapter);
-        }
-
-        private void convertUrlToFilePath(HashMap resultsHash) {
-            // Because one of the JSON Objects in the array doesn't convert to string properly
-            if (resultsHash == null) {
-                return;
-            }
-            try {
-                URL url = new URL((String) resultsHash.get("artworkUrl"));
-                File cacheDirectory = getBaseContext().getCacheDir();
-                String filePath = cacheDirectory.getPath() + "/" + resultsHash.get("collectionName") + ".jpg";
-                if (!cachedUrls.contains(url)) {
-                    cachedUrls.add(url);
-                    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                    urlConnection.connect();
-                    InputStream iStream = urlConnection.getInputStream();
-                    File tmpFile = new File(filePath);
-                    FileOutputStream fOutStream = new FileOutputStream(tmpFile);
-                    Bitmap bitmap = BitmapFactory.decodeStream(iStream);
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOutStream);
-                    fOutStream.flush();
-                    fOutStream.close();
-                }
-                resultsHash.put("artworkUrl", filePath);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 }
