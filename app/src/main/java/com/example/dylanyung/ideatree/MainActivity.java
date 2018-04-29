@@ -3,14 +3,17 @@ package com.example.dylanyung.ideatree;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
-import com.example.dylanyung.ideatree.DataObjects.SongJSONParser;
+
+import com.example.dylanyung.ideatree.Parsers.SongJSONParser;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +23,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -45,8 +49,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuffer jsonStringBuffer = new StringBuffer();
 
         String line = "";
-
-        while((line = bufferedReader.readLine()) != null){
+        while ((line = bufferedReader.readLine()) != null) {
             jsonStringBuffer.append(line);
         }
         bufferedReader.close();
@@ -59,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         String data = null;
 
         @Override
-        protected String doInBackground(Void... v){
+        protected String doInBackground(Void... v) {
             try {
                 data = downloadURL();
             } catch (IOException e) {
@@ -69,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onPostExecute(String result){
+        protected void onPostExecute(String result) {
             ListViewLoaderTask listViewLoaderTask = new ListViewLoaderTask();
             listViewLoaderTask.execute(result);
         }
@@ -77,9 +80,10 @@ public class MainActivity extends AppCompatActivity {
 
     private class ListViewLoaderTask extends AsyncTask<String, Void, SimpleAdapter> {
         JSONObject jsonObject;
+        HashSet<URL> cachedUrls = new HashSet<>();
 
         @Override
-        protected SimpleAdapter doInBackground(String... stringJson){
+        protected SimpleAdapter doInBackground(String... stringJson) {
             List<HashMap<String, Object>> tracksJsonArray = null;
             try {
                 jsonObject = new JSONObject(stringJson[0]);
@@ -89,7 +93,11 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            String[] from = {"collectionName", "trackName", "artwork"};
+            for (HashMap resultsHashMap : tracksJsonArray) {
+                convertUrltoFilePath(resultsHashMap);
+            }
+
+            String[] from = {"collectionName", "trackName", "artworkUrl"};
             int[] to = {R.id.collection_name, R.id.track_name, R.id.artwork};
             SimpleAdapter adapter = new SimpleAdapter(getBaseContext(), tracksJsonArray, R.layout.listview_layout, from, to);
 
@@ -97,61 +105,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onPostExecute(SimpleAdapter adapter){
+        protected void onPostExecute(SimpleAdapter adapter) {
             trackListView.setAdapter(adapter);
-
-            for(int i = 0 ; i < adapter.getCount() ; i++){
-                HashMap<String, Object> hm = (HashMap<String, Object>) adapter.getItem(i);
-                if(hm == null){
-                    continue;
-                }
-                String imgUrl = (String) hm.get("artworkUrl");
-                ImageLoaderTask imageLoaderTask = new ImageLoaderTask();
-                hm.put("artworkUrl", imgUrl);
-                hm.put("position", i);
-                imageLoaderTask.execute(hm);
-            }
         }
-    }
 
-    private class ImageLoaderTask extends AsyncTask<HashMap<String, Object>, Void, HashMap<String, Object>>{
 
-        @Override
-        protected HashMap<String, Object> doInBackground(HashMap<String, Object>... hm) {
-            InputStream iStream = null;
-            String imgUrl = (String) hm[0].get("artworkUrl");
-            int position = (Integer) hm[0].get("position");
-
+        private void convertUrltoFilePath(HashMap resultsHash) {
+            if (resultsHash == null) {
+                return;
+            }
             try {
-                URL url = new URL(imgUrl);
-                HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.connect();
-                iStream = urlConnection.getInputStream();
+                URL url = new URL((String) resultsHash.get("artworkUrl"));
                 File cacheDirectory = getBaseContext().getCacheDir();
-                File tmpFile = new File(cacheDirectory.getPath() + "/wpta_" + position + ".jpg");
-                FileOutputStream fOutStream = new FileOutputStream(tmpFile);
-                Bitmap b = BitmapFactory.decodeStream(iStream);
-                b.compress(Bitmap.CompressFormat.JPEG, 100, fOutStream);
-                fOutStream.flush();
-                fOutStream.close();
-                HashMap<String, Object> hmBitmap = new HashMap<>();
-                hmBitmap.put("artwork", tmpFile.getPath());
-                hmBitmap.put("position", position);
-                return hmBitmap;
+                String filePath = cacheDirectory.getPath() + "/" + resultsHash.get("collectionName") + ".jpg";
+                if (!cachedUrls.contains(url)) {
+                    cachedUrls.add(url);
+                    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+                    urlConnection.connect();
+                    InputStream iStream = urlConnection.getInputStream();
+                    File tmpFile = new File(filePath);
+                    FileOutputStream fOutStream = new FileOutputStream(tmpFile);
+                    Bitmap bitmap = BitmapFactory.decodeStream(iStream);
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOutStream);
+                    fOutStream.flush();
+                    fOutStream.close();
+                }
+                resultsHash.put("artworkUrl", filePath);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(HashMap<String, Object> result){
-            String path = (String) result.get("artwork");
-            int position = (Integer) result.get("position");
-            SimpleAdapter adapter = (SimpleAdapter) trackListView.getAdapter();
-            HashMap<String, Object> hm = (HashMap<String, Object>) adapter.getItem(position);
-            hm.put("artwork", path);
-            adapter.notifyDataSetChanged();
         }
     }
 }
