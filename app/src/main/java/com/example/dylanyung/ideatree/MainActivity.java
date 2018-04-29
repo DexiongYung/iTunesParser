@@ -6,7 +6,9 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SimpleAdapter;
 
 import com.example.dylanyung.ideatree.Parsers.SongJSONParser;
@@ -28,24 +30,27 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     ListView trackListView;
+    ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        progressBar = findViewById(R.id.progressBar);
+        trackListView = findViewById(R.id.listview_tracks);
+
         DownloadJSON downloadJSON = new DownloadJSON();
         downloadJSON.execute();
-        trackListView = findViewById(R.id.listview_tracks);
     }
 
     private String downloadURL() throws IOException {
-        InputStream iStream = null;
+        progressBar.setVisibility(View.VISIBLE);
         URL url = new URL("https://itunes.apple.com/search?term=Michael+jackson");
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         urlConnection.connect();
-        iStream = urlConnection.getInputStream();
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(iStream));
+        InputStream inputStream = urlConnection.getInputStream();
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
         StringBuffer jsonStringBuffer = new StringBuffer();
 
         String line = "";
@@ -53,16 +58,15 @@ public class MainActivity extends AppCompatActivity {
             jsonStringBuffer.append(line);
         }
         bufferedReader.close();
-        iStream.close();
+        inputStream.close();
 
         return jsonStringBuffer.toString();
     }
 
     private class DownloadJSON extends AsyncTask<Void, Integer, String> {
-        String data = null;
-
         @Override
         protected String doInBackground(Void... v) {
+            String data = "";
             try {
                 data = downloadURL();
             } catch (IOException e) {
@@ -84,33 +88,34 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected SimpleAdapter doInBackground(String... stringJson) {
-            List<HashMap<String, Object>> tracksJsonArray = null;
+            List<HashMap<String, Object>> data = null;
             try {
                 jsonObject = new JSONObject(stringJson[0]);
                 SongJSONParser songJsonParser = new SongJSONParser();
-                tracksJsonArray = songJsonParser.getSongs(jsonObject.getJSONArray("results"));
+                data = songJsonParser.getSongs(jsonObject.getJSONArray("results"));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
 
-            for (HashMap resultsHashMap : tracksJsonArray) {
-                convertUrltoFilePath(resultsHashMap);
+            for (HashMap resultsHashMap : data) {
+                convertUrlToFilePath(resultsHashMap);
             }
 
             String[] from = {"collectionName", "trackName", "artworkUrl"};
             int[] to = {R.id.collection_name, R.id.track_name, R.id.artwork};
-            SimpleAdapter adapter = new SimpleAdapter(getBaseContext(), tracksJsonArray, R.layout.listview_layout, from, to);
+            SimpleAdapter adapter = new SimpleAdapter(getBaseContext(), data, R.layout.listview_layout, from, to);
 
             return adapter;
         }
 
         @Override
         protected void onPostExecute(SimpleAdapter adapter) {
+            progressBar.setVisibility(View.GONE);
             trackListView.setAdapter(adapter);
         }
 
-
-        private void convertUrltoFilePath(HashMap resultsHash) {
+        private void convertUrlToFilePath(HashMap resultsHash) {
+            // Because one of the JSON Objects in the array doesn't convert to string properly
             if (resultsHash == null) {
                 return;
             }
