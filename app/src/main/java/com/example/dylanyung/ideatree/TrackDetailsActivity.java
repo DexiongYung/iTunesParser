@@ -47,18 +47,27 @@ public class TrackDetailsActivity extends AppCompatActivity {
         HashMap storage = Cache.getInstance().getStorage();
         HashMap resultHash = (HashMap) storage.get(collectionName + trackName);
 
+        //I know the images are cached so just do a look up based on collectName
         File cacheDirectory = getBaseContext().getCacheDir();
         File imgFile = new File(cacheDirectory.getPath() + "/" + collectionName + ".jpg");
         if (imgFile.exists()) {
             Bitmap imgFileBitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
             imageViewArtwork.setImageBitmap(imgFileBitmap);
         }
-        textViewArtist.setText((String) resultHash.get("artistName"));
-        //Some costs were negative which doesn't make sense so applied absolute to them.
+
+        //Some costs were negative which doesn't make sense so applied absolute val to them.
         String cost = (String) resultHash.get("trackPrice");
         Double costAsDouble = Math.abs(Double.parseDouble(cost));
         textViewCost.setText(costAsDouble.toString());
-        final String trackUrl = (String) resultHash.get("trackViewUrl");
+
+        setTrackUrl((String) resultHash.get("trackViewUrl"));
+        textViewArtist.setText((String) resultHash.get("artistName"));
+        textViewTrackName.setText(trackName);
+        textViewCollection.setText(collectionName);
+    }
+
+    private void setTrackUrl(String str){
+        final String trackUrl = str;
         textViewUrl.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW);
@@ -67,7 +76,5 @@ public class TrackDetailsActivity extends AppCompatActivity {
             }
         });
         textViewUrl.setMovementMethod(LinkMovementMethod.getInstance());
-        textViewTrackName.setText(trackName);
-        textViewCollection.setText(collectionName);
     }
 }

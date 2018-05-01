@@ -1,5 +1,6 @@
 package com.example.dylanyung.ideatree;
 
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -33,14 +34,18 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         trackListView = findViewById(R.id.listview_tracks);
         DownloadJSON downloadJSON = new DownloadJSON();
         downloadJSON.execute();
-
         trackListView.setOnItemClickListener(this);
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         String trackName = ((TextView) view.findViewById(R.id.track_name)).getText().toString();
-        String collectionName = ((TextView) view.findViewById(R.id.track_name)).getText().toString();
+        String collectionName = ((TextView) view.findViewById(R.id.collection_name)).getText().toString();
+
+        Intent intent = new Intent(getBaseContext(), TrackDetailsActivity.class);
+        intent.putExtra("trackName", trackName);
+        intent.putExtra("collectionName", collectionName);
+        startActivity(intent);
     }
 
     private class DownloadJSON extends AsyncTask<Void, Integer, String> {
@@ -78,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 e.printStackTrace();
             }
 
-            //Setting artwork URL prints some errors, but I wanted an async loading of images after the list was generated
+            //Setting artwork URL prints some errors, but I wanted an async loading of images after the list was generated so it'll error on the initial urls
             String[] from = {"collectionName", "trackName", "artworkUrl"};
             int[] to = {R.id.collection_name, R.id.track_name, R.id.artwork};
             SimpleAdapter adapter = new SimpleAdapter(getBaseContext(), data, R.layout.listview_layout, from, to);

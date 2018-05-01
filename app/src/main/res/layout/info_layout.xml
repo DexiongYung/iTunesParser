@@ -36,7 +36,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:textSize="30sp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </RelativeLayout>
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:paddingLeft="5dp"
                 android:paddingTop="3dp"
-                android:textSize="15dp" />
+                android:textSize="15sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -83,7 +83,7 @@
                 android:layout_height="wrap_content"
                 android:paddingLeft="5dp"
                 android:paddingTop="3dp"
-                android:textSize="15dp" />
+                android:textSize="15sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -102,7 +102,29 @@
                 android:layout_height="30dp"
                 android:paddingLeft="5dp"
                 android:paddingTop="3dp"
-                android:textSize="15dp" />
+                android:textSize="15sp"
+                android:autoLink="web"
+                android:linksClickable="true"
+                android:text="@string/click_me"
+                android:textColor="@color/colorPrimary"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="10dp">
+
+            <ImageButton
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/ic_play_arrow_black_24dp" />
+            <TextView
+                android:id="@+id/details_preview"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:paddingLeft="5dp"
+                android:paddingTop="3dp"
+                android:textSize="15sp"
+                android:text="@string/I_sing"/>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>
